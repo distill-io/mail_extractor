@@ -50,7 +50,7 @@ fn set_filename(filename: String, file_format: String) -> (String, String) {
 	)
 }
 
-pub fn rewrite(mht_file: Vec<u8>, mht_filename: String) -> HashMap<String, Vec<u8>> {
+pub fn rewrite(mht_file: Vec<u8>) -> HashMap<String, Vec<u8>> {
 	let mut extracted_file: HashMap<String, Vec<u8>> = HashMap::new();
 
 	let parsed = parse_mail(&mht_file).unwrap();
@@ -132,19 +132,17 @@ pub fn rewrite(mht_file: Vec<u8>, mht_filename: String) -> HashMap<String, Vec<u
 		}
 		match creation {
 			Some(name1) => {
-				let dname = mht_filename.clone();
 				let mut filename = name1.split(':');
 				let name = filename.next_back();
 				let src1 = name.unwrap().replace("#", "");
-				let src2 = dname + &String::from("/") + &src1;
 				match sub.get_body_encoded().unwrap() {
 					Body::Base64(body) | Body::QuotedPrintable(body) => {
 						if ctype == "text/css" {
 							let st: &str = &*body.get_decoded_as_string().unwrap();
 							let after = proxify_css(st);
-							extracted_file.insert(src2.clone(), after.as_bytes().to_vec());
+							extracted_file.insert(src1.clone(), after.as_bytes().to_vec());
 						} else {
-							extracted_file.insert(src2.clone(), body.get_decoded().unwrap());
+							extracted_file.insert(src1.clone(), body.get_decoded().unwrap());
 						}
 					}
 					Body::SevenBit(body) | Body::EightBit(body) => {
@@ -156,8 +154,7 @@ pub fn rewrite(mht_file: Vec<u8>, mht_filename: String) -> HashMap<String, Vec<u
 				}
 			}
 			None => {
-				let mut filename = parse_by_slash(name);
-				filename = mht_filename.clone() + &String::from("/") + &filename;
+				let filename = parse_by_slash(name);
 				match sub.get_body_encoded().unwrap() {
 					Body::Base64(body) | Body::QuotedPrintable(body) => {
 						extracted_file.insert(filename.clone(), body.get_decoded().unwrap());
