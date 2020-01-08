@@ -28,6 +28,71 @@ fn proxify_css(body: &str) -> Cow<str> {
 	})
 }
 
+fn rewrite_html(body: Vec<u8>, link_to_hash: &mut HashMap<String, String>) -> (Vec<u8>, &mut HashMap<String, String>) {
+	let mut html_out: Vec<u8> = vec![];
+	let mut rewriter = HtmlRewriter::try_new(
+		Settings {
+			element_content_handlers: vec![element!(
+				"base, img[src], link[rel=stylesheet][href], iframe[src]",
+				|el| {
+					if el.get_attribute("rel") == Some("stylesheet".to_string()) {
+						let src = el.get_attribute("href").unwrap();
+						let (src1, newname) = set_filename(src, ".css".to_string());
+
+						link_to_hash.insert(el.get_attribute("href").unwrap(), newname);
+
+						el.set_attribute(
+							"href",
+							&(src1.replace("#", "") + &String::from(".css")),
+						)
+						.unwrap();
+					} else if el.tag_name() == "iframe" {
+						let src = el.get_attribute("src").unwrap();
+						let (src1, newname) = set_filename(src, ".html".to_string());
+
+						link_to_hash.insert(
+							el.get_attribute("src")
+								.unwrap()
+								.replace("cid:", "<")
+								.to_string() + ">",
+							newname,
+						);
+
+						el.set_attribute(
+							"src",
+							&(src1.replace("#", "") + &String::from(".html")),
+						)
+						.unwrap();
+					} else if el.tag_name() == "base" {
+						el.set_attribute("href", "").unwrap();
+					} else {
+						let src = el.get_attribute("src").unwrap();
+
+						let mut filename = src.split('/');
+						let name = filename.next_back();
+						let src1 = name.unwrap();
+						let filename1 = src1.split('?').next().unwrap();
+						link_to_hash
+							.insert(el.get_attribute("src").unwrap(), filename1.to_string());
+						el.set_attribute("src", &filename1.to_string()).unwrap();
+					}
+					Ok(())
+				}
+			)],
+			..Settings::default()
+		},
+		|c: &[u8]| html_out.extend_from_slice(c),
+	)
+	.unwrap();
+
+	rewriter
+		.write(&body)
+		.unwrap();
+	rewriter.end().unwrap();
+	drop(rewriter);
+	(html_out, link_to_hash)
+}
+
 fn parse_by_slash(path: String) -> String {
 	let mut filename = path.split('/');
 	let name = filename.next_back();
@@ -56,69 +121,9 @@ pub fn rewrite(mht_file: Vec<u8>) -> HashMap<String, Vec<u8>> {
 	let parsed = parse_mail(&mht_file).unwrap();
 
 	let mut link_to_hash: HashMap<String, String> = HashMap::new();
-	let mut output = vec![];
-	{
-		let mut rewriter = HtmlRewriter::try_new(
-			Settings {
-				element_content_handlers: vec![element!(
-					"img[src], link[rel=stylesheet][href], iframe[src]",
-					|el| {
-						// println!("{:?}", el.tag_name());
-						if el.get_attribute("rel") == Some("stylesheet".to_string()) {
-							let src = el.get_attribute("href").unwrap();
-							let (src1, newname) = set_filename(src, ".css".to_string());
-
-							link_to_hash.insert(el.get_attribute("href").unwrap(), newname);
-
-							el.set_attribute(
-								"href",
-								&(src1.replace("#", "") + &String::from(".css")),
-							)
-							.unwrap();
-						} else if el.tag_name() == "iframe" {
-							let src = el.get_attribute("src").unwrap();
-							let (src1, newname) = set_filename(src, ".html".to_string());
-
-							link_to_hash.insert(
-								el.get_attribute("src")
-									.unwrap()
-									.replace("cid:", "<")
-									.to_string() + ">",
-								newname,
-							);
-
-							el.set_attribute(
-								"src",
-								&(src1.replace("#", "") + &String::from(".html")),
-							)
-							.unwrap();
-						} else {
-							let src = el.get_attribute("src").unwrap();
-
-							let mut filename = src.split('/');
-							let name = filename.next_back();
-							let src1 = name.unwrap();
-							let filename1 = src1.split('?').next().unwrap();
-							link_to_hash
-								.insert(el.get_attribute("src").unwrap(), filename1.to_string());
-							el.set_attribute("src", &filename1.to_string()).unwrap();
-						}
-						Ok(())
-					}
-				)],
-				..Settings::default()
-			},
-			|c: &[u8]| output.extend_from_slice(c),
-		)
-		.unwrap();
-
-		rewriter
-			.write(&parsed.subparts[0].get_body_raw().unwrap())
-			.unwrap();
-		rewriter.end().unwrap();
-		drop(rewriter);
-	}
-	extracted_file.insert("index.html".to_string(), output);
+	
+	let (index_out, link_to_hash) = rewrite_html(parsed.subparts[0].get_body_raw().unwrap(), &mut link_to_hash);
+	extracted_file.insert("index.html".to_string(), index_out);
 	for sub in parsed.subparts {
 		let name = sub.headers[2].get_value().unwrap();
 		let ctype = sub.headers[0].get_value().unwrap();
@@ -138,9 +143,14 @@ pub fn rewrite(mht_file: Vec<u8>) -> HashMap<String, Vec<u8>> {
 				match sub.get_body_encoded().unwrap() {
 					Body::Base64(body) | Body::QuotedPrintable(body) => {
 						if ctype == "text/css" {
-							let st: &str = &*body.get_decoded_as_string().unwrap();
-							let after = proxify_css(st);
+							let css_content: &str = &*body.get_decoded_as_string().unwrap();
+							let after = proxify_css(css_content);
 							extracted_file.insert(src1.clone(), after.as_bytes().to_vec());
+						} else if ctype == "text/html" {
+							let frame_content = body.get_decoded_as_string().unwrap();
+							let (after, link_to_hash) = rewrite_html(frame_content.as_bytes().to_vec(), link_to_hash);
+							extracted_file.insert(src1.clone(), after);
+							// println!("{:?}", std::str::from_utf8(&after));
 						} else {
 							extracted_file.insert(src1.clone(), body.get_decoded().unwrap());
 						}

@@ -1,6 +1,6 @@
 [package]
 name = "mail_extractor"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["iamsaquib <saquib@distill.io>"]
 edition = "2018"
 description = """
