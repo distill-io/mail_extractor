@@ -8,7 +8,7 @@ A Rust library to extract files from MIME type files and returns you a hashmap w
 use std::collections::HashMap;
 use mail_extractor;
 fn get_files(file_stream: Vec<u8>) -> HashMap<String, Vec<u8>> {
-    et extracted_file: HashMap<String, Vec<u8>> = mail_extractor::rewrite(file_stream);
+    let extracted_file: HashMap<String, Vec<u8>> = mail_extractor::rewrite(file_stream);
     extracted_file
 }
 ```
