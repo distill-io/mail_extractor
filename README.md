@@ -17,5 +17,5 @@ fn get_files(file_stream: Vec<u8>) -> HashMap<String, Vec<u8>> {
 
 ``` Rust
 [dependencies]
-mail_extractor = "0.1.2"
+mail_extractor = "0.1.3"
 ```
