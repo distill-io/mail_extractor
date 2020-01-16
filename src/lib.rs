@@ -19,7 +19,6 @@ use lol_html::{element, HtmlRewriter, Settings};
 use mailparse::body::Body;
 use mailparse::parse_mail;
 use regex::{Captures, Regex};
-// use std::borrow::Cow;
 use htmlescape::decode_html;
 use std::collections::HashMap;
 use std::hash::Hash;
