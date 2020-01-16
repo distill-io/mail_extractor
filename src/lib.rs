@@ -1,3 +1,20 @@
+//! # Mail Extractor
+//!
+//! `Mail_extractor` is a Rust library to extract files
+//!  from MIME type files and returns you a hashmap
+//!  which will contain filename and it corresponding file content as bytes.
+//!
+//! # Example
+//!
+//! ```
+//! use std::collections::HashMap;
+//! use mail_extractor;
+//! fn get_files(file_stream: Vec<u8>) -> HashMap<String, Vec<u8>> {
+//!     let extracted_file: HashMap<String, Vec<u8>> = mail_extractor::rewrite(file_stream);    
+//! 	extracted_file
+//! }
+//! ```
+
 use lol_html::{element, HtmlRewriter, Settings};
 use mailparse::body::Body;
 use mailparse::parse_mail;
@@ -148,6 +165,10 @@ fn set_filename(filename: String, file_format: String) -> (String, String) {
 }
 
 pub fn rewrite(mht_file: Vec<u8>) -> HashMap<String, Vec<u8>> {
+	/*!
+	 * Rewrites file and returns it's corresponding file content as bytes.
+	*/
+
 	let mut extracted_file: HashMap<String, Vec<u8>> = HashMap::new();
 	let parsed = parse_mail(&mht_file).unwrap();
 	let (index_out, mut link_to_hash) = rewrite_html(parsed.subparts[0].get_body_raw().unwrap());

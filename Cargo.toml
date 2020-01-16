@@ -6,7 +6,8 @@ edition = "2018"
 description = """
     A Rust library to extract files from MIME type files and returns you a hashmap which will contain filename and it corresponding file content as bytes
 """
-license = "GPL-3.0"
+license = "MIT"
+documentation = "https://docs.rs/mail_extractor"
 repository = "https://github.com/distill-io/mail_extractor"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
