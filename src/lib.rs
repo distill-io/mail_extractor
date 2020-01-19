@@ -10,7 +10,7 @@
 //! use std::collections::HashMap;
 //! use mail_extractor;
 //! fn get_files(file_stream: Vec<u8>) -> HashMap<String, Vec<u8>> {
-//!     let extracted_file: HashMap<String, Vec<u8>> = mail_extractor::rewrite(file_stream);    
+//! 	let extracted_file: HashMap<String, Vec<u8>> = mail_extractor::rewrite(file_stream);    
 //! 	extracted_file
 //! }
 //! ```
